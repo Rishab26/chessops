@@ -86,6 +86,7 @@ export const RULES = [
   'horde',
   'racingkings',
   'crazyhouse',
+  'elemental'
 ] as const;
 
 export type Rules = (typeof RULES)[number];

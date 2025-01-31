@@ -823,6 +823,73 @@ export class Horde extends Position {
   }
 }
 
+export class ElementalChess extends Position {
+  private pieceElements: Map<Square, string> = new Map();
+  private static readonly reactivityScale: Record<string, number> = {
+    'He': 0, 'Ne': 0, 'Ar': 0, 'Kr': 0, 'Xe': 0, 'Rn': 0,
+    'Au': 1, 'Pt': 1, 'Ag': 2, 'Cu': 2, 'Fe': 3, 'Zn': 4,
+    'B': 6, 'Si': 6, 'Ge': 6, 'As': 6, 'Sb': 6,
+    'F': 9, 'Cl': 8, 'Br': 7, 'I': 7,
+    'Li': 10, 'Na': 11, 'K': 12, 'Rb': 13, 'Cs': 14, 'Fr': 15,
+    'Be': 5, 'Mg': 5, 'Ca': 6, 'Sr': 7, 'Ba': 8, 'Ra': 9
+  };
+
+  private constructor() {
+    super('elemental');
+    this.assignElements();
+  }
+
+  static default(): ElementalChess {
+    const pos = new this();
+    pos.reset();
+    return pos;
+  }
+
+  static fromSetup(setup: Setup): Result<ElementalChess, PositionError> {
+    const pos = new this();
+    pos.setupUnchecked(setup);
+    return pos.validate().map(_ => pos);
+  }
+
+  clone(): ElementalChess {
+    const cloned = super.clone() as ElementalChess;
+    cloned.pieceElements = new Map(this.pieceElements);
+    return cloned;
+  }
+
+  private getRandomElement(): string {
+    const elementKeys = Object.keys(ElementalChess.reactivityScale);
+    return elementKeys[Math.floor(Math.random() * elementKeys.length)];
+  }
+
+  private assignElements(): void {
+    for (const square of this.board.occupied) {
+      this.pieceElements.set(square, this.getRandomElement());
+    }
+  }
+
+  protected playCaptureAt(from: Square, square: Square, captured: Piece): void {
+    const attackerElement = this.pieceElements.get(from);
+    const defenderElement = this.pieceElements.get(square);
+
+    if (!attackerElement || !defenderElement) return;
+    
+    const attackerReactivity = ElementalChess.reactivityScale[attackerElement];
+    const defenderReactivity = ElementalChess.reactivityScale[defenderElement];
+
+    if (attackerReactivity > defenderReactivity) {
+      super.playCaptureAt(from, square, captured);
+      this.pieceElements.delete(square);
+    }
+  }
+
+  hasInsufficientMaterial(color: Color): boolean {
+    return super.hasInsufficientMaterial(color);
+  }
+}
+
+
+
 export const defaultPosition = (rules: Rules): Position => {
   switch (rules) {
     case 'chess':
@@ -841,6 +908,8 @@ export const defaultPosition = (rules: Rules): Position => {
       return ThreeCheck.default();
     case 'crazyhouse':
       return Crazyhouse.default();
+    case 'elemental':
+      return ElementalChess.default();
   }
 };
 
@@ -862,6 +931,8 @@ export const setupPosition = (rules: Rules, setup: Setup): Result<Position, Posi
       return ThreeCheck.fromSetup(setup);
     case 'crazyhouse':
       return Crazyhouse.fromSetup(setup);
+    case 'elemental':
+      return ElementalChess.fromSetup(setup);
   }
 };
 
@@ -871,6 +942,7 @@ export const isStandardMaterial = (pos: Position): boolean => {
     case 'antichess':
     case 'atomic':
     case 'kingofthehill':
+    case 'elemental':
     case '3check':
       return COLORS.every(color => isStandardMaterialSide(pos.board, color));
     case 'crazyhouse': {
@@ -899,3 +971,9 @@ export const isStandardMaterial = (pos: Position): boolean => {
       );
   }
 };
+
+
+
+
+
+
